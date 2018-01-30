@@ -1,0 +1,197 @@
+{
+  "uuid": "2752797645442117145-242ac11c-0001-012",
+  "schemaId": null,
+  "internalUsername": null,
+  "associationIds": [],
+  "lastUpdated": "2017-12-15T11:17:51.696-06:00",
+  "name": "ds_apps",
+  "value": {
+    "definition": {
+      "defaultMemoryPerNode": 1,
+      "owner": "mock",
+      "shortDescription": "Run an interactive MATLAB 2016a session on Stampede. Submit a help ticket to get your license configured or approved.",
+      "id": "Matlab-0.3u8",
+      "uuid": "4848310607146708505-242ac115-0001-005",
+      "parameters": [
+        {
+          "semantics": {
+            "minCardinality": 1,
+            "ontology": [
+              "xs:string"
+            ],
+            "maxCardinality": 1
+          },
+          "id": "_license",
+          "value": {
+            "default": "",
+            "required": true,
+            "enquote": false,
+            "visible": true,
+            "validator": "",
+            "type": "string",
+            "order": 0
+          },
+          "details": {
+            "argument": null,
+            "repeatArgument": false,
+            "showArgument": false,
+            "description": "The text that should be put in the Matlab license file.",
+            "label": "Matlab License File Text"
+          }
+        },
+        {
+          "semantics": {
+            "minCardinality": 1,
+            "ontology": [
+              "xs:enumeration",
+              "xs:string"
+            ],
+            "maxCardinality": 1
+          },
+          "id": "desktop_resolution",
+          "value": {
+            "default": "1280x800",
+            "required": true,
+            "enquote": false,
+            "visible": true,
+            "type": "enumeration",
+            "order": 0,
+            "enum_values": [
+              {
+                "800x600": "800x600"
+              },
+              {
+                "1280x800": "1280x800"
+              },
+              {
+                "1920x1080": "1920x1080"
+              },
+              {
+                "1920x1200": "1920x1200"
+              },
+              {
+                "1600x1200": "1600x1200"
+              },
+              {
+                "2560x1600": "2560x1600"
+              }
+            ]
+          },
+          "details": {
+            "argument": null,
+            "repeatArgument": false,
+            "showArgument": false,
+            "description": "Set the desktop screen size for your visualization session.",
+            "label": "Desktop Resolution"
+          }
+        }
+      ],
+      "defaultQueue": "normal",
+      "defaultNodeCount": 1,
+      "label": "MATLAB Large",
+      "defaultProcessorsPerNode": 16,
+      "version": "0.3",
+      "_links": {
+        "self": {
+          "href": "https://agave.designsafe-ci.org/apps/v2/Matlab-0.3u8"
+        },
+        "storageSystem": {
+          "href": "https://agave.designsafe-ci.org/systems/v2/designsafe.storage.default"
+        },
+        "executionSystem": {
+          "href": "https://agave.designsafe-ci.org/systems/v2/designsafe.community.exec.stampede"
+        },
+        "owner": {
+          "href": "https://agave.designsafe-ci.org/profiles/v2/mock"
+        },
+        "permissions": {
+          "href": "https://agave.designsafe-ci.org/apps/v2/Matlab-0.3u8/pems"
+        },
+        "history": {
+          "href": "https://agave.designsafe-ci.org/apps/v2/Matlab-0.3u8/history"
+        },
+        "metadata": {
+          "href": "https://agave.designsafe-ci.org/meta/v2/data/?q=%7B%22associationIds%22%3A%224848310607146708505-242ac115-0001-005%22%7D"
+        }
+      },
+      "templatePath": "wrapper.sh",
+      "defaultMaxRunTime": "02:00:00",
+      "appCategory": "Data Processing",
+      "revision": 8,
+      "available": true,
+      "inputs": [
+        {
+          "semantics": {
+            "fileTypes": [
+              "raw-0"
+            ],
+            "minCardinality": 1,
+            "ontology": [
+              "xsd:string"
+            ],
+            "maxCardinality": 1
+          },
+          "id": "workingDirectory",
+          "value": {
+            "default": "agave://designsafe.storage.default/mock/",
+            "required": true,
+            "enquote": false,
+            "visible": true,
+            "validator": "",
+            "order": 0
+          },
+          "details": {
+            "argument": null,
+            "repeatArgument": false,
+            "showArgument": false,
+            "description": "The directory containing the files that you want to work on. This directory and its files will be copied to where your MATLAB session runs. You can drag the link for the directory from the Data Browser on the left, or click the 'Select Input' button and then select the directory.",
+            "label": "Working Directory"
+          }
+        }
+      ],
+      "tags": [
+        "DesignSafe",
+        "hazards",
+        "NHERI",
+        "VNC",
+        "desktop",
+        "matlab"
+      ],
+      "outputs": [],
+      "isPublic": true,
+      "longDescription": "Run an interactive MATLAB 2016a session on Stampede. Submit a help ticket to get your license configured or approved. Be sure to exit the Matlab application when you are finished with the session or any files saved will not be archived with the job.",
+      "executionSystem": "designsafe.community.exec.stampede",
+      "testPath": "test/test.sh",
+      "ontology": [],
+      "deploymentPath": "/applications/Matlab-0.3u8.zip",
+      "icon": null,
+      "deploymentSystem": "designsafe.storage.default",
+      "name": "Matlab",
+      "checkpointable": false,
+      "lastModified": "2017-10-18T15:34:28.000-05:00",
+      "modules": [
+        "purge",
+        "load TACC",
+        "load matlab"
+      ],
+      "executionType": "HPC",
+      "parallelism": "PARALLEL",
+      "helpURI": "http://www.mathworks.com/help/matlab/index.html"
+    },
+    "type": "agave"
+  },
+  "created": "2017-06-29T11:06:03.440-05:00",
+  "owner": "mock",
+  "_links": {
+    "self": {
+      "href": "https://agave.designsafe-ci.org/meta/v2/data/2752797645442117145-242ac11c-0001-012"
+    },
+    "permissions": {
+      "href": "https://agave.designsafe-ci.org/meta/v2/data/2752797645442117145-242ac11c-0001-012/pems"
+    },
+    "owner": {
+      "href": "https://agave.designsafe-ci.org/profiles/v2/mock"
+    },
+    "associationIds": []
+  }
+}

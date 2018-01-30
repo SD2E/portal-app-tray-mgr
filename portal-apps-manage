@@ -1,0 +1,238 @@
+#!/usr/bin/env python
+"""
+Manager for TACC Portal Discover Workspace Apps
+"""
+import argparse
+import json
+import sys
+from agavepy.agave import Agave, AgaveError
+from tabulate import tabulate
+
+parser = argparse.ArgumentParser()
+parser.add_argument("action", help="Management action (add, del, get)", default="get")
+parser.add_argument("ID", help="Agave App ID (full text or '*' to fetch all) or Metadata UUID depending on context")
+
+TAG = 'portal_apps'
+TYPE = 'agave'
+
+def build_portal_appdef(ag, appId):
+    """Creates a metadata record for the portal to display an Agave app"""
+    assert ag is not None, "Must pass a valid Agave client"
+    assert appId is not None, "appId is mandatory"
+
+    APPDEF = {'associationIds': [],
+              'name': apps_tag(ag),
+              'value': {'type': TYPE,
+                        'definition': None}}
+    try:
+        app_def = ag.apps.get(appId=appId).copy()
+    except Exception as e:
+        raise AgaveError(
+            "Unable to fetch app definition for {}: {}".format(appId, e))
+        return None
+
+    if isinstance(app_def, dict):
+        # remove keys we don't want/need in the app_def
+        for rm_field in ('lastModified', '_links'):
+            del app_def[rm_field]
+#        print(app_def)
+        APPDEF['value'].update({'type': TYPE,
+                                'definition': app_def})
+        return APPDEF
+
+    else:
+        raise ValueError("Unable to create a valid app definition")
+        return None
+
+
+def find_existing_portal_appdefs(ag, appId, idOnly=True):
+    """Fetch an existing portal_apps definition by appId"""
+    assert ag is not None, "Must pass a valid Agave client"
+    assert appId is not None, "appId is mandatory"
+
+    app_def_resp = []
+    if appId != '*':
+        query = json.dumps({'name': apps_tag(ag),
+                            'value.definition.id': appId,
+                            'value.type': TYPE})
+    else:
+        query = json.dumps({'name': apps_tag(ag), 'value.type': TYPE})
+
+    try:
+        app_defs = ag.meta.listMetadata(q=query, limit=100)
+    except Exception as e:
+        raise AgaveError(
+            "Unable to query for 'portal_apps' matching {}: {}".format(
+                appId, e))
+        return []
+
+    for app_def in app_defs:
+        if idOnly:
+            app_def_resp.append(app_def.get('uuid'))
+        else:
+            app_def_resp.append(app_def)
+
+    return app_def_resp
+
+
+def grant_pem_on_portal_app(ag, uuid, username='world', pem='READ'):
+    """Grants a permission on metadata identified by UUID"""
+    meta_pem = json.dumps({'username': username,
+                           'permission': pem})
+    meta_pem_resp = None
+    try:
+        meta_pem_resp = ag.meta.updateMetadataPermissions(
+            uuid=uuid, body=meta_pem)
+    except Exception as e:
+        raise AgaveError("Failed to grant {}/{} on {}: e".format(
+            username, pem, uuid, e))
+        return False
+    if 'username' not in meta_pem_resp:
+        raise AgaveError("Failed to grant {}/{} on {}: e".format(
+            username, pem, uuid, e))
+        return False
+
+    return True
+
+
+def addupdate_portal_app(ag, appId, applyPems=True, currentUUID=None):
+    """Add or update a public app to the portal"""
+    assert appId is not None, "appID can't be empty"
+
+    portal_app_recs = find_existing_portal_appdefs(ag, appId, idOnly=True)
+    len_portal_apps = len(portal_app_recs)
+    if len_portal_apps > 1:
+        raise Exception(
+            "Too many portal_apps entries ({}) found for {}".format(
+                len_portal_apps, appId))
+        return False
+
+    app_def_record = build_portal_appdef(ag, appId)
+    meta = json.dumps(app_def_record)
+    meta_add_resp = None
+    try:
+        if len_portal_apps == 1:
+            print("trying to update {}".format(portal_app_recs))
+            meta_add_resp = ag.meta.updateMetadata(
+                uuid=portal_app_recs, body=meta)
+        else:
+            print("trying to add")
+            meta_add_resp = ag.meta.addMetadata(body=meta)
+    except Exception as e:
+        raise AgaveError(
+            "Unable to add/update record for {}: {}".format(appId, e))
+        return False
+    # check to see if it's likely to be an agave response - has UUID field
+    if 'uuid' not in meta_add_resp:
+        raise AgaveError("Failed to add or update record for {}".format(appId))
+        return False
+
+    # grant permission
+    return meta_add_resp['uuid']
+#    return grant_pem_on_portal_app(ag, meta_add_resp['uuid'], 'world', 'READ')
+
+
+def delete_app_by_uuid(ag, uuid):
+    """Deletes a portal-app by its UUID"""
+    assert uuid is not None, "UUID cannot be empty"
+    try:
+        ag.meta.deleteMetadata(uuid=uuid)
+        return True
+    except Exception as e:
+        raise AgaveError("Failed to delete record {}: {}".format(uuid, e))
+        return False
+
+
+def app_is_public(ag, uuid):
+    """Determine if world has at least READ on a metadata record"""
+    assert uuid is not None, "UUID cannot be empty"
+    pems_list = []
+    try:
+        pems_list = ag.meta.listMetadataPermissions(uuid=uuid)
+    except Exception as e:
+        raise AgaveError(
+            "Unable to fetch permissions for {}: {}".format(uuid, e))
+        return False
+
+    for pem in pems_list:
+        if pem['username'] == 'world':
+            return pem['permission'].get('read', False)
+
+    return False
+
+
+def display_app(ag, appObject, tableFormat="grid", publicOnly=False):
+    """Display either a solitary app definition or a list"""
+    uuids, appids, created, updated, owners, types, public = \
+        [], [], [], [], [], [], []
+    if isinstance(appObject, basestring):
+        appObject = [appObject]
+    if isinstance(appObject, list):
+        for app in appObject:
+            uuids.append(app.get('uuid'))
+            appids.append(app.get('value').get('definition').get('id'))
+            created.append(app.get('created'))
+            updated.append(app.get('lastUpdated'))
+            owners.append(app.get('owner'))
+            types.append(app.get('value').get('type'))
+            public.append(app_is_public(ag, app.get('uuid')))
+
+    headers = ['UUID', 'Updated', 'AppId', 'Owner', 'Type', 'Public']
+    table = [uuids, updated, appids, owners, types, public]
+    table = list(zip(*table))
+    # sort by appId
+    table.sort(key=lambda x: x[2])
+
+    print(tabulate(table, tablefmt=tableFormat, headers=headers))
+
+
+def apps_tag(ag):
+    """Return the correct tag for each Agave tenant"""
+    TAGS = {'designsafe': 'ds_apps'}
+    for t in TAGS.keys():
+        if t in ag.token.token_url:
+            return TAGS[t]
+    return TAG
+
+
+def main(args):
+    """Main control function"""
+
+    ag = Agave.restore()
+
+    cmd = args.action.lower()
+    assert cmd in ('add', 'get', 'del'), \
+        "{} is an invalid command".format(cmd)
+
+    if cmd == 'get':
+        apps = find_existing_portal_appdefs(ag, appId=args.ID, idOnly=False)
+        display_app(ag, apps)
+        sys.exit(0)
+
+    if cmd == 'del':
+        if delete_app_by_uuid(ag, uuid=args.ID):
+            print("Successfully deleted")
+            sys.exit(0)
+        else:
+            print("Failed to delete {}".format(args.ID))
+            sys.exit(1)
+
+    if cmd == 'add':
+        added = addupdate_portal_app(ag, appId=args.ID)
+        if added:
+            print("Successfully added {}".format(added))
+            granted = grant_pem_on_portal_app(ag, added, 'world', 'READ')
+            if granted:
+                print("Successfully published {}".format(added))
+                sys.exit(0)
+            else:
+                print("Failed to publish {}".format(added))
+                sys.exit(1)
+        else:
+            print("Failed to add {}".format(args.ID))
+            sys.exit(1)
+
+
+if __name__ == '__main__':
+    args = parser.parse_args()
+    main(args)
